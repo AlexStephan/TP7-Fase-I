@@ -125,6 +125,9 @@
   <ItemGroup>
     <ClCompile Include="faseI.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ftd2xx.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

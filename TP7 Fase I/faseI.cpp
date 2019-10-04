@@ -9,15 +9,20 @@
 	con S = 0:
 	-avanza de la 0F a la 40 o a la 00? (simil 4F a 00 o 40)
 
-
+	NOTA:
+	-Estilo C? separar en .h y .c
 
 
 
 
 */
 
+#include <iostream>
+#include <cstdlib>
 
+#include "ftd2xx.h"
 
+typedef unsigned char BYTE;
 
 
 
@@ -104,3 +109,28 @@
 //Ejemplo:	(LCD_SET_ADD | LCD_SECONDLINE | LCD_POS12)
 //o, de forma equivalente:
 //			(LCD_SET_ADD | LCD_SECONDLINE | 12)
+
+#define LSB(x)	((x)&0x0F)
+#define MSB(x)	(((x)&0xF0)>>4)
+//Uno q bit a bit separe el BYTE en los correspondientes pines
+
+typedef struct FT_HANDLE_	FT_HANDLE;
+
+FT_HANDLE* lcdInit(int iDevice);
+void lcdWriteIR(FT_HANDLE* deviceHandler, BYTE valor);
+void lcdWriteDR(FT_HANDLE* deviceHandler, BYTE valor);
+
+static void lcdWriteNibble(FT_HANDLE* deviceHandler, BYTE valor);
+static void lcdWriteByte(FT_HANDLE* deviceHandler, BYTE valor, BYTE rs);
+
+
+void lcdWriteIR(FT_HANDLE* deviceHandler, BYTE valor) {
+	lcdWriteByte(deviceHandler, valor, LCD_RS_IR);
+}
+void lcdWriteDR(FT_HANDLE* deviceHandler, BYTE valor) {
+	lcdWriteByte(deviceHandler, valor, LCD_RS_DR);
+}
+
+static void lcdWriteByte(FT_HANDLE* deviceHandler, BYTE valor, BYTE rs) {
+
+}
