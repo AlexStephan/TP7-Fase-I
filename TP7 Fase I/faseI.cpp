@@ -12,6 +12,10 @@
 	NOTA:
 	-Estilo C? separar en .h y .c
 
+	-Recordar usar FT_Close(lcdHandle)
+
+
+
 
 
 
@@ -19,12 +23,17 @@
 
 #include <iostream>
 #include <cstdlib>
-
+#include<cstdio>
+#include <Windows.h>
+#include <chrono>
+#define FTD2XX_EXPORTS
 #include "ftd2xx.h"
+
 
 typedef unsigned char BYTE;
 
-
+#define CONNECTING_TIME 5
+#define ID_SIZE 20
 
 //--------------------------------------------------------------//
 // Asignacion de nombres a los pines del puerto
@@ -110,18 +119,55 @@ typedef unsigned char BYTE;
 //o, de forma equivalente:
 //			(LCD_SET_ADD | LCD_SECONDLINE | 12)
 
-#define LSB(x)	((x)&0x0F)
-#define MSB(x)	(((x)&0xF0)>>4)
-//Uno q bit a bit separe el BYTE en los correspondientes pines
-
-typedef struct FT_HANDLE_	FT_HANDLE;
-
 FT_HANDLE* lcdInit(int iDevice);
+
 void lcdWriteIR(FT_HANDLE* deviceHandler, BYTE valor);
 void lcdWriteDR(FT_HANDLE* deviceHandler, BYTE valor);
 
-static void lcdWriteNibble(FT_HANDLE* deviceHandler, BYTE valor);
-static void lcdWriteByte(FT_HANDLE* deviceHandler, BYTE valor, BYTE rs);
+static void lcdWriteByte(FT_HANDLE* deviceHandler, BYTE valor, BYTE rs);	//Separa una instruccion/dato en 2 nybbles, y a cada uno le anexa los valores de E y RS adecuados, formando 2 bytes
+static void lcdWriteNibble(FT_HANDLE* deviceHandler, BYTE valor); //Envia el byte directamente por el FTDI al LCD (segun los pines asignados a cada bit)
+
+
+FT_HANDLE* lcdInit(int iDevice) {
+	FT_STATUS status = !FT_OK;
+	FT_HANDLE lcdHandle;
+	FT_HANDLE* result = &lcdHandle;
+	BYTE info = 0x00;
+	DWORD sizeSent = 0;
+
+	char LCDdescription[ID_SIZE];
+	snprintf(LCDdescription, ID_SIZE, "EDA LCD %i B", iDevice);
+
+	std::chrono::seconds MaxTime(CONNECTING_TIME);
+
+	std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
+	std::chrono::time_point<std::chrono::system_clock> current = start;
+
+	bool exit = false;
+
+	while (status != FT_OK && ((current - start) < MaxTime) && exit == false) {
+		status = FT_OpenEx((void*)LCDdescription, FT_OPEN_BY_DESCRIPTION, &lcdHandle);
+		if (status == FT_OK) {
+			BYTE Mask = 0xFF;
+			BYTE Mode = 1;
+			if (FT_SetBitMode(lcdHandle, Mask, Mode) == FT_OK) {
+
+			}
+			else {
+				// No se pudo configurar :(
+				FT_Close(lcdHandle);
+			}
+			exit = true;
+		}
+		current = std::chrono::system_clock::now();
+	}
+	//controlar si se logro conectar O se acabo el tiempo
+	if (status != FT_OK) {
+		//No se pudo abrir el LCD
+		result = nullptr;
+	}
+	return result;
+}
 
 
 void lcdWriteIR(FT_HANDLE* deviceHandler, BYTE valor) {
@@ -132,5 +178,22 @@ void lcdWriteDR(FT_HANDLE* deviceHandler, BYTE valor) {
 }
 
 static void lcdWriteByte(FT_HANDLE* deviceHandler, BYTE valor, BYTE rs) {
+	BYTE send = 0;
 
+	send = (valor & 0xF0) | rs;
+	lcdWriteNibble(deviceHandler, send | LCD_E_OFF);
+	lcdWriteNibble(deviceHandler, send | LCD_E_ON);
+	Sleep(1);
+	lcdWriteNibble(deviceHandler, send | LCD_E_OFF);
+
+	send = ((valor & 0x0F) << 4) | rs;
+	lcdWriteNibble(deviceHandler, send | LCD_E_OFF);
+	lcdWriteNibble(deviceHandler, send | LCD_E_ON);
+	Sleep(1);
+	lcdWriteNibble(deviceHandler, send | LCD_E_OFF);
+}
+
+static void lcdWriteNibble(FT_HANDLE* deviceHandler, BYTE valor) {
+	DWORD size_sent;
+	FT_Write(deviceHandler,&valor,1,&size_sent);
 }
